@@ -1,4 +1,4 @@
-// gcd_loop.js
+// Worker for Serial Queue
 
 self.onmessage = function(event) {
 	if (event.data.cmd === 'dispatch_async') {
