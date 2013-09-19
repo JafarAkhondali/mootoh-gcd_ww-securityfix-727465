@@ -8,12 +8,15 @@ var Q = function() {
 	var self = this;
 
 	worker.onmessage = function(event) {
-		// may want to call the callback function associated with the function.
 		var cb = self.callbacks[event.data.count];
 		console.log('result:' + event.data.result);
 		if (cb) {
 			cb();
 		}
+	};
+
+	worker.onerror = function(error) {
+		console.log('error in worker: [' + error.filename + ':' + error.lineno + '] ' + error.message);
 	};
 
 	this.worker = worker;
