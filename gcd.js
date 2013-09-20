@@ -2,14 +2,19 @@
 
 var GCD = {};
 
-var Q = function() {
-	this.q = new Array();
-	var worker = new Worker('worker.js');
+var AsyncWorker = function(queue, id) {
+	this.queue = queue;
+	this.id = id;
+	this.callbacks = {};
+	this.asyncCount = 0;
+
+	var worker = new Worker('serial_worker.js');
+	worker.postMessage({'cmd': 'on_create', 'id': id});
 	var self = this;
 
 	worker.onmessage = function(event) {
 		var cb = self.callbacks[event.data.count];
-		console.log('result:' + event.data.result);
+		console.log('[' + event.data.id + ']' + ' result:' + event.data.result);
 		if (cb) {
 			cb();
 		}
@@ -18,20 +23,52 @@ var Q = function() {
 	worker.onerror = function(error) {
 		console.log('error in worker: [' + error.filename + ':' + error.lineno + '] ' + error.message);
 	};
-
 	this.worker = worker;
-	this.callbacks = {};
-	this.asyncCount = 0;
 };
 
-Q.prototype.dispatch_sync = function(func) {
-	return func();
-};
-
-Q.prototype.dispatch_async = function(func, callback) {
+AsyncWorker.prototype.dispatch_async = function(func, callback, args) {
 	this.asyncCount++;
-	this.worker.postMessage({'cmd': 'dispatch_async', 'func': func.toString(), 'count': this.asyncCount});
+	this.worker.postMessage({'cmd': 'dispatch_async', 'func': func.toString(), 'args': args, 'count': this.asyncCount});
 	this.callbacks[this.asyncCount] = callback;
+};
+
+
+var SerialQueue = function() {
+	this.worker = new AsyncWorker(this);
+};
+
+SerialQueue.prototype.dispatch_async = function(func, callback) {
+	this.worker.dispatch_async(func, callback);
+};
+
+
+var ConcurrentQueue = function() {
+	this.NUM_WORKERS = 4;
+
+	this.workers = [];
+	for (var i=0; i<this.NUM_WORKERS; i++)
+		this.workers.push(new AsyncWorker(this, i));
+
+	this.current = 0;
+};
+
+ConcurrentQueue.prototype.dispatch_async = function(func, callback, args) {
+	// Simply round-robin scheduling
+	this.workers[this.current++].dispatch_async(func, callback, args);
+	if (this.current >= this.NUM_WORKERS)
+		this.current = 0;
+};
+
+
+var Q = function(isConcurrent) {
+	if (isConcurrent)
+		this.queue = new ConcurrentQueue();
+	else
+		this.queue = new SerialQueue();
+};
+
+Q.prototype.dispatch_async = function(func, callback, args) {
+	this.queue.dispatch_async(func, callback, args);
 };
 
 GCD.queue = Q;
@@ -52,10 +89,7 @@ GCD.globalQueue = function() {
 //
 // Tests
 //
-var q = new GCD.queue();
-q.dispatch_sync(function() {
-	var a = 1 + 2;
-});
+var q = new GCD.queue(true);
 
 q.dispatch_async(function() {
 	var b = 1 + 3;
@@ -63,6 +97,13 @@ q.dispatch_async(function() {
 }, function() {
 	console.log('callbacked');
 });
+
+q.dispatch_async(function(arr) {
+	return arr.length;
+	// return 2 + 3;
+}, function() {
+	console.log('callbacked #2');
+}, [1,2,3, 4,5,6]);
 
 // var mq = GCD.mainQueue();
 // var gq = GCD.globalQueue();
