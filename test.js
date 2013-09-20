@@ -14,7 +14,6 @@ q.dispatch_async(function() {
 // passing an array as argument
 q.dispatch_async(function(arr) {
 	return arr.length;
-	// return 2 + 3;
 }, function() {
 	console.log('callbacked #2');
 }, [1,2,3, 4,5,6]);
@@ -96,6 +95,7 @@ q.dispatch_async(function() {
 });
 }
 
+// Run them in parallel
 for (var i=0; i<7; i++) {
 	benchMarkAsync();
 }
