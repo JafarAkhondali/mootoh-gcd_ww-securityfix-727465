@@ -4,24 +4,22 @@ var GCD = {};
 
 var AsyncWorker = function(queue, id) {
 	this.queue = queue;
-	this.id = id;
 	this.callbacks = {};
 	this.asyncCount = 0;
+	var self = this;
 
 	var worker = new Worker('worker.js');
 	worker.postMessage({'cmd': 'on_create', 'id': id});
-	var self = this;
 
 	worker.onmessage = function(event) {
 		var cb = self.callbacks[event.data.count];
-		console.log('[' + event.data.id + ']' + ' result:' + event.data.result);
-		if (cb) {
+		console.log('[' + id + ']' + ' result:' + event.data.result);
+		if (cb)
 			cb();
-		}
 	};
 
 	worker.onerror = function(error) {
-		console.log('error in worker: [' + error.filename + ':' + error.lineno + '] ' + error.message);
+		console.log('error in worker: [' + id + ':' + error.filename + ':' + error.lineno + '] ' + error.message);
 	};
 	this.worker = worker;
 };
