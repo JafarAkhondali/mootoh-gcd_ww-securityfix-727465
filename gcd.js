@@ -8,7 +8,7 @@ var AsyncWorker = function(queue, id) {
 	this.callbacks = {};
 	this.asyncCount = 0;
 
-	var worker = new Worker('serial_worker.js');
+	var worker = new Worker('worker.js');
 	worker.postMessage({'cmd': 'on_create', 'id': id});
 	var self = this;
 
